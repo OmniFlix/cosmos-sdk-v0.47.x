@@ -25,7 +25,6 @@ import (
 	tmcmd "github.com/cometbft/cometbft/cmd/cometbft/commands"
 	tmcfg "github.com/cometbft/cometbft/config"
 	tmlog "github.com/cometbft/cometbft/libs/log"
-	"github.com/cometbft/cometbft/node"
 	tmstore "github.com/cometbft/cometbft/store"
 	tmtypes "github.com/cometbft/cometbft/types"
 
@@ -462,7 +461,7 @@ func DefaultBaseappOptions(appOpts types.AppOptions) []func(*baseapp.BaseApp) {
 	chainID := cast.ToString(appOpts.Get(flags.FlagChainID))
 	if chainID == "" {
 		// read the chainID from home directory (either from comet or genesis).
-		chainId, err := readChainIdFromHome(homeDir)
+		chainId, err := readChainIdFromHome(homeDir, appOpts)
 		if err != nil {
 			panic(err)
 		}
@@ -503,12 +502,13 @@ func DefaultBaseappOptions(appOpts types.AppOptions) []func(*baseapp.BaseApp) {
 }
 
 // readChainIdFromHome reads chain id from home directory.
-func readChainIdFromHome(homeDir string) (string, error) {
+func readChainIdFromHome(homeDir string, appOpts types.AppOptions) (string, error) {
 	cfg := tmcfg.DefaultConfig()
 	cfg.SetRoot(homeDir)
 
 	// if the node's current height is not zero then try to read the chainID from comet db.
-	db, err := node.DefaultDBProvider(&node.DBContext{ID: "blockstore", Config: cfg})
+	dbDir := filepath.Join(homeDir, "data")
+	db, err := dbm.NewDB("blockstore", GetAppDBBackend(appOpts), dbDir)
 	if err != nil {
 		return "", err
 	}
